@@ -1,6 +1,8 @@
 from src.corpus import Corpus
 from src.word2vec import Word2Vec
 import argparse, os, json
+from src.utils import cosine_similarity
+
 
 
 def find_existing_run( args, base_path="data/embeddings"):
@@ -61,7 +63,7 @@ def run():
     parser.add_argument(
         "--window_size",
         type=int,
-        default=5,
+        default=15,
         help="Context window size (number of words to the left and right of the target word). Default: 5",
     )
 
@@ -82,11 +84,13 @@ def run():
     parser.add_argument(
         "--epochs",
         type=int,
-        default=4,
+        default=30,
         help="Number of training epochs. Default: 5",
     )
 
     args = parser.parse_args()
+
+
 
     corpus = Corpus("data/corpus/corpus.txt")
 
@@ -101,6 +105,12 @@ def run():
         encoded_corpus = model.build_vocab(corpus, min_count=args.min_count, min_word_length=args.min_word_length)
         training_samples = model.build_training_samples(encoded_corpus, window_size=args.window_size)
         model.train(training_samples, learning_rate=args.learning_rate, epochs=args.epochs)
+
+    print(model.most_similar("queen"))
+
+    print(model.most_similar("king"))
+
+
 
 
 if __name__ == "__main__":
