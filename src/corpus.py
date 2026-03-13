@@ -15,7 +15,10 @@ class Corpus:
         if self.limit:
             tokens = tokens[:self.limit]
 
-        self.tokens = tokens
+        self._tokens = tokens
+
+    def get_tokens(self):
+        return self._tokens
 
 
 

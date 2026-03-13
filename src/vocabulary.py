@@ -34,7 +34,11 @@ class Vocabulary:
             minimum word length, assigns indices to words, and constructs the
             negative sampling distribution used during training.
         """
+
         self.build_word_frequencies(tokens)
+
+        print("\nBuilding vocabulary...")
+        print(f"Total tokens         : {self.total_word_count}")
 
         filtered_words = {}
 
@@ -53,6 +57,10 @@ class Vocabulary:
         count_pow = np.array( [count ** 0.75 for count in filtered_words.values()], dtype=np.float64)
 
         self.negatives_distribution = count_pow / count_pow.sum()
+
+        print("\nVocabulary statistics")
+        print(f"Unique words         : {len(self.word_freqs_map)}")
+        print(f"Filtered vocabulary  : {self.vocab_size}\n")
 
     def _build_discard_probabilities(self):
         """

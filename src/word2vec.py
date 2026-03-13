@@ -91,11 +91,11 @@ class Word2Vec:
 
             sys.stdout.write(
                 f"\rEpoch {epoch + 1:>2}/{epochs:<2} | "
+                f"step {samples_count:>7}/{samples_count:<7} | "
                 f"{100:6.2f}% | "
                 f"loss: {avg_energy:8.4f} | "
-                f"time: {epoch_time:7.2f}s | "
-                f"samples: {samples_count:>8} | "
-                f"speed: {epoch_speed:7.0f} samples/s\n"
+                f"{epoch_speed:7.0f} samples/s | "
+                f"time {epoch_time:05.2f}s\n"
             )
             sys.stdout.flush()
 
@@ -182,7 +182,7 @@ class Word2Vec:
         self.min_count = min_count
         self.min_word_length = min_word_length
 
-        raw_tokens = corpus.tokens
+        raw_tokens = corpus.get_tokens()
 
         self.vocabulary = Vocabulary(min_count, min_word_length)
         self.vocabulary.build_vocab(raw_tokens)
@@ -227,6 +227,7 @@ class Word2Vec:
            around it. For every (center, context) pair, negative samples are
            generated for training Skip-Gram with Negative Sampling.
         """
+        print("=" * 60 + "\n")
 
         print("Generating training pairs...")
         self.window_size = window_size
@@ -254,7 +255,10 @@ class Word2Vec:
                 training_samples.append((word_index, context_index, negative_indexes))
 
         sys.stdout.write("\rProgress: 100.0%\n")
-        print(f"Done. Generated {len(training_samples)} training samples.")
+        print("\nTraining samples generated")
+        print(f"Tokens processed   : {token_count}")
+        print(f"Training samples   : {len(training_samples)}\n")
+        print("=" * 60 + "\n")
         return training_samples
 
 

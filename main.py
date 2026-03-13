@@ -2,7 +2,7 @@ from src.corpus import Corpus
 from src.word2vec import Word2Vec
 import argparse, os, json
 from src.utils import cosine_similarity
-
+import numpy as np
 
 
 def find_existing_run( args, base_path="data/embeddings"):
@@ -34,6 +34,7 @@ def find_existing_run( args, base_path="data/embeddings"):
     return None
 
 def run():
+    np.random.seed(22)
     parser = argparse.ArgumentParser(
         prog="word2vec",
         description="Train a Word2Vec model using Skip-Gram with Negative Sampling.",
@@ -90,6 +91,24 @@ def run():
 
     args = parser.parse_args()
 
+    print("\n" + "=" * 60)
+    print("Word2Vec Training Configuration")
+    print("=" * 60)
+
+    print("\nModel parameters")
+    print(f"embedding_size    : {args.embedding_size}")
+    print(f"negatives_count   : {args.negatives_count}")
+
+    print("\nTraining parameters")
+    print(f"learning_rate     : {args.learning_rate}")
+    print(f"epochs            : {args.epochs}")
+    print(f"window_size       : {args.window_size}")
+
+    print("\nVocabulary parameters")
+    print(f"min_count         : {args.min_count}")
+    print(f"min_word_length   : {args.min_word_length}\n")
+
+    print("=" * 60 + "\n")
 
 
     corpus = Corpus("data/corpus/corpus.txt")
@@ -98,17 +117,16 @@ def run():
     run_path = find_existing_run(args)
 
     if run_path is not None:
-        print(f"Loading existing model from: {run_path}")
+        print(f"Loading existing model from: {run_path}\n")
         model.load_model(run_path)
     else:
-        print("No existing model found. Building a new one.")
+        print("No presaved data found. Building a new vocabulary.\n")
         encoded_corpus = model.build_vocab(corpus, min_count=args.min_count, min_word_length=args.min_word_length)
         training_samples = model.build_training_samples(encoded_corpus, window_size=args.window_size)
         model.train(training_samples, learning_rate=args.learning_rate, epochs=args.epochs)
 
     print(model.most_similar("queen"))
-
-    print(model.most_similar("king"))
+    print(model.most_similar("problems"))
 
 
 
