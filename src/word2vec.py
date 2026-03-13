@@ -271,14 +271,14 @@ class Word2Vec:
         context_vector = self.context_embeddings[context_index]
         negative_vectors = self.context_embeddings[negative_indexes]
 
-        positive_output = self._activation_function(np.dot(context_vector, word_vector))
+        positive_output : float | np.ndarray = self._activation_function(np.dot(context_vector, word_vector))
         negative_output = self._activation_function(np.dot(negative_vectors, word_vector))
 
         energy = self._cost_function(positive_output, negative_output)
 
         return  positive_output, negative_output, energy
 
-    def _backward(self, word_index : int , context_index : int , negative_indexes : list[int], positive_output : float, negative_output : float):
+    def _backward(self, word_index : int , context_index : int , negative_indexes : list[int], positive_output : float, negative_output :  np.ndarray):
         """
             Performs the backward pass for a Skip-Gram with Negative Sampling (SGNS) sample.
 
@@ -345,10 +345,12 @@ class Word2Vec:
 
             Input may optionally be clipped to improve numerical stability.
         """
-        #x = np.clip(x, -50, 50)
-
-        ### TODO MORE STABLE
-        return 1 / (1 + np.exp(-x))
+        x = np.asarray(x)
+        return np.where(
+            x >= 0,
+            1.0 / (1.0 + np.exp(-x)),
+            np.exp(x) / (1.0 + np.exp(x))
+        )
 
     def _sgdl_step(self, word_index : int , context_index : int, negative_indexes : list[int]):
         """

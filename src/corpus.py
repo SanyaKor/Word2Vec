@@ -1,13 +1,22 @@
+from .tokenizer import Tokenizer
 
 class Corpus:
 
-    def __init__(self, path, limit=200_000, sentence_length=1000):
+    def __init__(self, path, tokenizer=None, limit: int = 1_000_000):
         self.path = path
         self.limit = limit
-        self.sentence_length = sentence_length
+        self.tokenizer = tokenizer or Tokenizer()
 
         with open(path, "r") as file:
             text = file.read()
 
-        self.tokens = text.split()
+        tokens = self.tokenizer.tokenize(text)
+
+        if self.limit:
+            tokens = tokens[:self.limit]
+
+        self.tokens = tokens
+
+
+
 
