@@ -21,13 +21,13 @@ class Word2Vec:
         self.word_embeddings = None
         self.context_embeddings = None
 
+        self.curr_lr = 0.01
         self.eps = 1e-10
-        self.lr = 0.01
         self.window_size = 5
         self.min_count = 2
         self.min_word_length = 2
 
-    def train(self, training_samples : list[tuple[int, int, list[int]]], learning_rate : float = 0.001, epochs : int = 10):
+    def train(self, training_samples : list[tuple[int, int, list[int]]], lr_start : float = 0.025, lr_end : float = 0.0001, epochs : int = 10):
         """
             Train the Word2Vec model using Skip-Gram with Negative Sampling.
 
@@ -37,7 +37,10 @@ class Word2Vec:
 
             After training completes the model (embeddings + vocabulary) is saved.
         """
-        self.lr = learning_rate
+
+        self.curr_lr = lr_start
+        total_steps = epochs * len(training_samples)
+        global_step = 0
 
         samples_count = len(training_samples)
 
@@ -52,6 +55,8 @@ class Word2Vec:
 
             for step, (word_index, context_index, negative_indexes) in enumerate(training_samples, start=1):
 
+                self._update_learning_rate(global_step, total_steps, lr_start, lr_end)
+
                 energy = self._sgdl_step(
                     word_index,
                     context_index,
@@ -60,7 +65,10 @@ class Word2Vec:
 
                 total_energy += energy
                 running_energy += energy
+                global_step += 1
 
+
+            ### OUTPUT
 
                 ## NOTE** u can assign a smaller value, but it will significantly affect on speed
                 if step % 1000 == 0:
@@ -98,6 +106,8 @@ class Word2Vec:
                 f"time {epoch_time:05.2f}s\n"
             )
             sys.stdout.flush()
+
+            ###
 
         self.save_model()
 
@@ -153,10 +163,8 @@ class Word2Vec:
             Restores the vocabulary mappings and sampling distributions from
             `vocabulary.pkl`, and loads the word and context embedding matrices
             from `embeddings.npz`.
-
-            Args:
-                path (str): Directory containing the saved model files.
         """
+
         with open(f"{path}/vocabulary.pkl", "rb") as f:
             vocab = pickle.load(f)
 
@@ -227,6 +235,7 @@ class Word2Vec:
            around it. For every (center, context) pair, negative samples are
            generated for training Skip-Gram with Negative Sampling.
         """
+
         print("=" * 60 + "\n")
 
         print("Generating training pairs...")
@@ -261,12 +270,26 @@ class Word2Vec:
         print("=" * 60 + "\n")
         return training_samples
 
+    def _update_learning_rate(self, global_step: int, total_steps: int, lr_start : float, lr_end : float):
+        """
+            Linearly decays the learning rate from lr_start to lr_end over training steps.
+        """
+
+        if total_steps <= 0:
+            self.curr_lr = lr_end
+            return
+
+        progress = global_step / total_steps
+
+        lr = lr_start * (1.0 - progress)
+
+        self.curr_lr = max(lr, lr_end)
 
     def _forward(self, word_index : int, context_index : int, negative_indexes : list[int]):
         """
             Performs the forward pass for a Skip-Gram with Negative Sampling (SGNS) sample.
 
-            Computes the sigmoid scores for the positive (center, context) pair and the
+            Computes the scores from activation funcs for the positive (center, context) pair and the
             sampled negative pairs, then evaluates the energy (loss) for this training example.
         """
 
@@ -275,7 +298,7 @@ class Word2Vec:
         context_vector = self.context_embeddings[context_index]
         negative_vectors = self.context_embeddings[negative_indexes]
 
-        positive_output : float | np.ndarray = self._activation_function(np.dot(context_vector, word_vector))
+        positive_output = self._activation_function(np.dot(context_vector, word_vector))
         negative_output = self._activation_function(np.dot(negative_vectors, word_vector))
 
         energy = self._cost_function(positive_output, negative_output)
@@ -304,17 +327,18 @@ class Word2Vec:
 
         word_update = (positive_output - 1.0) * context_vector + np.dot(negative_output, negative_vectors)
 
-        self.word_embeddings[word_index] -= self.lr * word_update
-        self.context_embeddings[context_index] -= self.lr * context_update
+        self.word_embeddings[word_index] -= self.curr_lr * word_update
 
-        self.context_embeddings[negative_indexes] -= self.lr * negatives_update
+        self.context_embeddings[context_index] -= self.curr_lr * context_update
+        self.context_embeddings[negative_indexes] -= self.curr_lr * negatives_update
 
-    def _cost_function(self, positive_output : float, negative_output : np.ndarray ):
+    def _cost_function(self, positive_output : float | np.ndarray , negative_output : np.ndarray ):
         """
             Computes the energy of a training sample under the negative sampling objective.
             Lower energy means the model assigns high probability to the positive pair
             and low probability to the negative samples.
-            Note: `eps` is added for numerica stability to avoid log(0).
+
+            Note: `eps` is added for numericall stability to avoid log(0).
         """
 
         energy = -np.log(positive_output + self.eps) - np.sum(np.log(1.0 - negative_output + self.eps))
@@ -325,7 +349,7 @@ class Word2Vec:
             Samples negative word indices for Skip-Gram with Negative Sampling (SGNS).
 
             Draws words from the noise distribution (typically proportional to
-            word frequency^0.75) while ensuring they are different from the
+            word frequency^0.75 ) while ensuring they are different from the
             center word and the positive context word.
         """
         negative_indices = [] ##
@@ -338,7 +362,7 @@ class Word2Vec:
 
         return list(negative_indices)
 
-    def _activation_function(self, x):
+    def _activation_function(self, x: float | np.ndarray ) -> float | np.ndarray:
         """
             Sigmoid activation used in Skip-Gram with Negative Sampling (SGNS).
 
@@ -358,11 +382,10 @@ class Word2Vec:
 
     def _sgdl_step(self, word_index : int , context_index : int, negative_indexes : list[int]):
         """
-            Performs one SGD update for the Skip-Gram with Negative Sampling (SGNS) objective.
+            Performs one Skip-Gram with Negative Sampling (SGNS) update using
+            stochastic gradient descent (SGD) for a single training sample.
 
-            Runs the forward pass to compute the outputs and energy (loss), then applies
-            the backward pass to update the embeddings for the center word, context word,
-            and negative samples.
+            Returns the sample energy (training loss).
         """
 
         positive_output, negative_output, energy = self._forward(word_index, context_index, negative_indexes)
