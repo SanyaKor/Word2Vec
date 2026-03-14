@@ -1,7 +1,7 @@
 from src.corpus import Corpus
 from src.word2vec import Word2Vec
 import argparse, os, json
-from src.utils import cosine_similarity
+from src.utils import cosine_similarity, download_corpus
 import numpy as np
 
 
@@ -110,8 +110,8 @@ def run():
 
     print("=" * 60 + "\n")
 
-
-    corpus = Corpus("data/corpus/corpus.txt")
+    download_corpus()
+    corpus = Corpus(path="data/corpus/wikitext103_corpus.txt")
 
     model = Word2Vec(embedding_size=args.embedding_size, negatives_count=args.negatives_count)
     run_path = find_existing_run(args)
@@ -125,8 +125,7 @@ def run():
         training_samples = model.build_training_samples(encoded_corpus, window_size=args.window_size)
         model.train(training_samples, learning_rate=args.learning_rate, epochs=args.epochs)
 
-    print(model.most_similar("queen"))
-    print(model.most_similar("problems"))
+
 
 
 

@@ -1,0 +1,10 @@
+{
+  "w2v_run0": {
+    "path": "data/embeddings/w2v_run0",
+    "embedding_size": 100,
+    "negatives_count": 5,
+    "window_size": 15,
+    "min_count": 5,
+    "min_word_length": 2
+  }
+}

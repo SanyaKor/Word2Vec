@@ -2,7 +2,7 @@ from .tokenizer import Tokenizer
 
 class Corpus:
 
-    def __init__(self, path, tokenizer=None, limit: int = 1_000_000):
+    def __init__(self, path, tokenizer=None, limit: int = 100_000_000):
         self.path = path
         self.limit = limit
         self.tokenizer = tokenizer or Tokenizer()
