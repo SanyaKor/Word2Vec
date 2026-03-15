@@ -34,7 +34,8 @@ def find_existing_run( args, base_path="data/embeddings"):
     return None
 
 def run():
-    np.random.seed(22)
+    np.random.seed(42)
+
     parser = argparse.ArgumentParser(
         prog="word2vec",
         description="Train a Word2Vec model using Skip-Gram with Negative Sampling.",
@@ -43,7 +44,7 @@ def run():
     parser.add_argument(
         "--embedding_size",
         type=int,
-        default=100,
+        default=75,
         help="Dimensionality of word embeddings (vector size). Default: 100",
     )
 
@@ -64,7 +65,7 @@ def run():
     parser.add_argument(
         "--window_size",
         type=int,
-        default=15,
+        default=10,
         help="Context window size (number of words to the left and right of the target word). Default: 5",
     )
 
@@ -78,14 +79,14 @@ def run():
     parser.add_argument(
         "--min_word_length",
         type=int,
-        default=2,
+        default=3,
         help="Minimum number of characters a token must have to be included in the vocabulary. Default: 2",
     )
 
     parser.add_argument(
         "--epochs",
         type=int,
-        default=30,
+        default=20,
         help="Number of training epochs. Default: 5",
     )
 
@@ -111,7 +112,8 @@ def run():
     print("=" * 60 + "\n")
 
     download_corpus()
-    corpus = Corpus(path="data/corpus/wikitext103_corpus.txt")
+    corpus = Corpus()
+    corpus.load_from_file(path="data/corpus/wikitext103_corpus.txt")
 
     model = Word2Vec(embedding_size=args.embedding_size, negatives_count=args.negatives_count)
     run_path = find_existing_run(args)
@@ -120,15 +122,15 @@ def run():
         print(f"Loading existing model from: {run_path}\n")
         model.load_model(run_path)
     else:
+
         print("No presaved data found. Building a new vocabulary.\n")
-        encoded_corpus = model.build_vocab(corpus, min_count=args.min_count, min_word_length=args.min_word_length)
-        training_samples = model.build_training_samples(encoded_corpus, window_size=args.window_size)
-        model.train(training_samples, learning_rate=args.learning_rate, epochs=args.epochs)
 
+        tok_ids = model.build_vocab(corpus.tokens, min_count=args.min_count, min_word_length=args.min_word_length)
 
+        training_samples = model.build_training_samples(tok_ids, window_size=args.window_size)
+        model.train(training_samples, lr_start=args.learning_rate, epochs=args.epochs)
 
-
-
+    print(model.most_similar("team"))
 
 if __name__ == "__main__":
     run()

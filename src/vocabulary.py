@@ -12,100 +12,122 @@ class Vocabulary:
         self.const_t = const_t
 
         self.word_freqs_map = {}
-        self.total_word_count = 0
 
+        self.total_word_count = 0
+        self.filtered_word_count = 0
+        self.vocab_size = 0
+
+        ### dict for O(1) operations word -> idx
         self.word_to_index = {}
+
+        ### list for O(1) operations idx -> word
         self.index_to_word = []
 
-        self.vocab_size = 0
         self.negatives_distribution = None
-        self.discard_probabilities = {}
+        self.discard_probabilities = None
 
 
-    def build_word_frequencies(self, tokens : list[str]):
+    def build(self, tokens: list[str]):
+        """
+        Build the vocabulary from input tokens.
+
+        Computes token frequencies, filters words by minimum frequency and
+        minimum word length, assigns indices, and constructs the negative
+        sampling distribution.
+        """
+
         self.word_freqs_map = dict(Counter(tokens))
-        self.total_word_count = len(tokens)
-
-    def build_vocab(self, tokens : list[str]):
-        """
-            Builds the vocabulary from the input tokens.
-
-            Computes word frequencies, filters words by minimum frequency and
-            minimum word length, assigns indices to words, and constructs the
-            negative sampling distribution used during training.
-        """
-
-        self.build_word_frequencies(tokens)
 
         print("\nBuilding vocabulary...")
-        print(f"Total tokens         : {self.total_word_count}")
+        print(f"Total tokens         : {len(tokens)}")
+
         filtered_words = {}
 
-        word_counts = list(self.word_freqs_map.items())
-        word_counts.sort(key=lambda item: item[1], reverse=True)
-
-        for word, count in word_counts:
+        for word, count in self.word_freqs_map.items():
             if count >= self.min_words_count and len(word) >= self.min_word_length:
                 filtered_words[word] = count
 
-        self.word_to_index = {word: index for index, word in enumerate(filtered_words)}
+        sort_filtered_words = sorted(filtered_words.items(), key=lambda item: item[1],reverse=True)
 
-        self.index_to_word = list(filtered_words.keys())
+        for index, (word, count) in enumerate(sort_filtered_words):
+            self.word_to_index[word] = index
+            self.index_to_word.append(word)
+
+        word_freqs_list = []
+
+        for word in self.index_to_word:
+            count = filtered_words[word]
+            word_freqs_list.append(count)
+
+
         self.vocab_size = len(self.index_to_word)
 
-        count_pow = np.array( [count ** 0.75 for count in filtered_words.values()], dtype=np.float64)
-
-        self.negatives_distribution = count_pow / count_pow.sum()
-
-        print("\nVocabulary statistics")
-        print(f"Unique words         : {len(self.word_freqs_map)}")
         print(f"Filtered vocabulary  : {self.vocab_size}\n")
 
-    def _build_discard_probabilities(self):
-        """
-            Computes subsampling probabilities for each word in the vocabulary.
+        self._build_negatives_distribution(filtered_words)
+        self._build_discard_probabilities(filtered_words)
 
-            Frequent words receive higher discard probabilities according to
-            the word2vec subsampling formula.
+
+    def _build_discard_probabilities(self, words_map: dict[str, int]):
         """
+        Build discard probabilities for subsampling frequent words.
+        """
+        total_count = sum(words_map.values())
+
         self.discard_probabilities = {}
 
-        for word, count in self.word_freqs_map.items():
-            freq = count / self.total_word_count
-            discard_probability = 1.0 - (self.const_t / freq) ** 0.5
-            discard_probability = max(0.0, discard_probability)
+        for word in self.index_to_word:
+            count = words_map[word]
+            freq = count / total_count
 
-            self.discard_probabilities[word] = discard_probability
+            discard_probability = 1.0 - np.sqrt(self.const_t / freq)
+            discard_probability = np.clip(discard_probability, 0.0, 1.0)
 
-    def subsample(self, tokens : list[str]):
+            self.discard_probabilities[word] = float(discard_probability)
+
+
+    def _build_negatives_distribution(self, words_map: dict[str, int]):
+
+        self.word_freqs = []
+        freq_pow = []
+        total = 0.0
+
+        for word in self.index_to_word:
+            freq = words_map[word]
+            self.word_freqs.append(freq)
+
+            value = freq ** 0.75
+            freq_pow.append(value)
+            total += value
+
+        self.word_freqs = np.array(self.word_freqs)
+        self.negatives_distribution = np.array(freq_pow) / total
+
+    def subsample(self, tokens: list[str]) -> list[str]:
         """
-            Applies subsampling to the input tokens to reduce dimensionality.
+        Apply subsampling to tokens.
 
-            Frequent words are probabilistically discarded according to the
-            subsampling distribution. Tokens not present in the vocabulary
-            are skipped.
+        Frequent words are probabilistically discarded according to the
+        subsampling distribution. Tokens not present in the vocabulary
+        are kept unchanged.
         """
 
-        self._build_discard_probabilities()
-        result = []
+        res = []
 
-        for word in tokens:
-            if word not in self.word_to_index:
+        for token in tokens:
+            prob = self.discard_probabilities.get(token)
+
+            if prob is None:
+                res.append(token)
                 continue
 
-            if np.random.rand() >= self.discard_probabilities[word]:
-                result.append(word)
+            if np.random.rand() >= prob:
+                res.append(token)
 
-        return result
+        return res
 
-    def tokens_to_ids(self, tokens : list[str]):
-        """
-           Converts tokens to their corresponding vocabulary indices.
 
-           Tokens that are not present in the vocabulary are ignored.
-        """
 
-        return [ self.word_to_index[word] for word in tokens if word in self.word_to_index ]
 
     def prepare_tokens(self, tokens : list[str], subsample : bool = True):
         """
@@ -120,7 +142,7 @@ class Vocabulary:
         # This is faster than running the two steps separately, which helps reduce
         # preprocessing time before building training pairs.
 
-        self._build_discard_probabilities()
+
         tokens_id = []
 
         for word in tokens:
@@ -134,6 +156,8 @@ class Vocabulary:
                 tokens_id.append(self.word_to_index[word])
 
         return tokens_id
+
+
 
     def save_vocab(self, path : str ="data/", filename : str ="vocabulary", format : str="pkl" ):
 

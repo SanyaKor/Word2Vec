@@ -7,7 +7,6 @@ import os
 import pickle
 
 from .utils import cosine_similarity
-from .corpus import Corpus
 
 class Word2Vec:
     def __init__(self, vocab_size = None,  embedding_size : int = 100, negatives_count : int = 5):
@@ -33,8 +32,14 @@ class Word2Vec:
 
     def _init_weights(self):
 
-        self.word_embeddings = np.random.randn(self.vocab_size, self.embedding_size)
-        self.context_embeddings = np.random.randn(self.vocab_size, self.embedding_size)
+        rnd = np.random.default_rng(42)
+
+        #self.word_embeddings = np.random.randn(self.vocab_size, self.embedding_size)
+        #self.context_embeddings = np.random.randn(self.vocab_size, self.embedding_size)
+
+        ## BETTER initialization
+        self.word_embeddings = rnd.uniform(-0.5 / self.embedding_size, 0.5 / self.embedding_size, (self.vocab_size, self.embedding_size))
+        self.context_embeddings = rnd.uniform(-0.5 / self.embedding_size, 0.5 / self.embedding_size, (self.vocab_size, self.embedding_size))
 
     def train(self, training_samples : list[tuple[int, int, list[int]]], lr_start : float = 0.025, lr_end : float = 0.0001, epochs : int = 10):
         """
@@ -194,19 +199,31 @@ class Word2Vec:
         self.word_embeddings = data["word_embeddings"]
         self.context_embeddings = data["context_embeddings"]
 
-    def build_vocab(self, corpus : Corpus, min_count : int = 2, min_word_length : int = 1, subsample : bool = True):
+    def build_vocab(self, raw_tokens, min_count : int = 2, min_word_length : int = 1, subsample : bool = True):
+        """
+           Builds the vocabulary from the input tokens and prepares token ids for training.
+
+           The method constructs a vocabulary based on word frequencies and filtering rules,
+           optionally applies subsampling to reduce the impact of very frequent words,
+           and converts the remaining tokens into their corresponding vocabulary indices.
+           The resulting sequence of token ids can then be used to generate training
+           samples for the model.
+        """
+
+        # NOTE:
+        # `raw_tokens` refers to tokens produced directly by a tokenizer.
+        # These tokens represent the segmented text but have not yet processed
+        # any vocabulary filtering, subsampling, or index conversion
 
         self.min_count = min_count
         self.min_word_length = min_word_length
 
-
-        raw_tokens = corpus.tokens
-
-        self.vocabulary = Vocabulary(min_count, min_word_length)
-
-        self.vocabulary.build_vocab(raw_tokens)
-
-        token_ids = self.vocabulary.prepare_tokens(raw_tokens, subsample=subsample)
+        self.vocabulary = Vocabulary(min_count)
+        self.vocabulary.build(raw_tokens)
+        if subsample:
+            token_ids = [self.vocabulary.word_to_index[t] for t in self.vocabulary.subsample(raw_tokens) if t in self.vocabulary.word_to_index]
+        else:
+            token_ids = [self.vocabulary.word_to_index[t] for t in raw_tokens if t in self.vocabulary.word_to_index]
 
         self.vocab_size = len(self.vocabulary.word_to_index)
 

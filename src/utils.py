@@ -9,7 +9,7 @@ def cosine_similarity(vector_a, vector_b):
     return ( np.dot(vector_a, vector_b) ) / ((norm_a * norm_b) + 1e-10)
 
 
-def download_data(max_words_amount : int = 128_000, file_path : str = "data/corpus/wikitext103_corpus.txt"):
+def download_corpus(max_words_amount : int = 128_000, file_path : str = "data/corpus/wikitext103_corpus.txt"):
 
     if os.path.exists(file_path):
         print("Using cached corpus")

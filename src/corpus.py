@@ -12,6 +12,8 @@ class Corpus:
         with open(path, "r") as f:
             text = f.read()
 
+        # tokens = text.split()
+
         tokens = self.tokenizer.tokenize(text)
 
         if limit:
@@ -21,8 +23,9 @@ class Corpus:
 
     def load_from_text(self, text, limit: int = 100_000_000):
 
-        tokens = self.tokenizer.tokenize(text)
+        # tokens = text.split()
 
+        tokens = self.tokenizer.tokenize(text)
         if limit:
             tokens = tokens[:limit]
 
