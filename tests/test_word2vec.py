@@ -1,6 +1,7 @@
 from src.corpus import Corpus
 from src.vocabulary import Vocabulary
 from src.word2vec import Word2Vec
+from src.utils import cosine_similarity
 import numpy as np
 
 
@@ -9,7 +10,7 @@ def test_vocab_build():
     tokens = ["cat", "dog", "cat", "mouse"]
 
     vocab = Vocabulary(min_words_count=1)
-    vocab.build_vocab(tokens)
+    vocab.build(tokens)
 
     assert "cat" in vocab.word_to_index
     assert "dog" in vocab.word_to_index
@@ -93,7 +94,7 @@ def test_train_vocab():
     w2v = Word2Vec()
 
 
-    encoded_corpus = w2v.build_vocab(corpus, subsample=False)
+    encoded_corpus = w2v.build_vocab(corpus.tokens, subsample=False)
     training_samples = w2v.build_training_samples(encoded_corpus)
 
     energy_before = 0.0
@@ -156,7 +157,7 @@ def test_most_similar():
 
     w2v = Word2Vec(embedding_size=20, negatives_count=2)
 
-    encoded = w2v.build_vocab(corpus, subsample=False)
+    encoded = w2v.build_vocab(corpus.tokens, subsample=False)
     samples = w2v.build_training_samples(encoded)
 
     w2v.train(samples, epochs=20)
