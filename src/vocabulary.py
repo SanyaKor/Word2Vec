@@ -39,7 +39,6 @@ class Vocabulary:
 
         print("\nBuilding vocabulary...")
         print(f"Total tokens         : {self.total_word_count}")
-
         filtered_words = {}
 
         word_counts = list(self.word_freqs_map.items())
@@ -108,7 +107,7 @@ class Vocabulary:
 
         return [ self.word_to_index[word] for word in tokens if word in self.word_to_index ]
 
-    def prepare_tokens(self, tokens : list[str]):
+    def prepare_tokens(self, tokens : list[str], subsample : bool = True):
         """
           Applies subsampling to the input tokens and converts the remaining tokens
           to their corresponding vocabulary indices.
@@ -128,7 +127,10 @@ class Vocabulary:
             if word not in self.word_to_index:
                 continue
 
-            if np.random.rand() >= self.discard_probabilities[word]:
+            if subsample:
+                if np.random.rand() >= self.discard_probabilities[word]:
+                    tokens_id.append(self.word_to_index[word])
+            else:
                 tokens_id.append(self.word_to_index[word])
 
         return tokens_id

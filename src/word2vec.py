@@ -10,13 +10,13 @@ from .utils import cosine_similarity
 from .corpus import Corpus
 
 class Word2Vec:
-    def __init__(self, embedding_size : int = 100, negatives_count : int = 5):
+    def __init__(self, vocab_size = None,  embedding_size : int = 100, negatives_count : int = 5):
 
         self.embedding_size = embedding_size
         self.negatives_count = negatives_count
 
         self.vocabulary = None
-        self.vocab_size = None
+        self.vocab_size = vocab_size
 
         self.word_embeddings = None
         self.context_embeddings = None
@@ -26,6 +26,15 @@ class Word2Vec:
         self.window_size = 5
         self.min_count = 2
         self.min_word_length = 2
+
+        if vocab_size is not None:
+            self._init_weights()
+
+
+    def _init_weights(self):
+
+        self.word_embeddings = np.random.randn(self.vocab_size, self.embedding_size)
+        self.context_embeddings = np.random.randn(self.vocab_size, self.embedding_size)
 
     def train(self, training_samples : list[tuple[int, int, list[int]]], lr_start : float = 0.025, lr_end : float = 0.0001, epochs : int = 10):
         """
@@ -185,22 +194,24 @@ class Word2Vec:
         self.word_embeddings = data["word_embeddings"]
         self.context_embeddings = data["context_embeddings"]
 
-    def build_vocab(self, corpus : Corpus, min_count : int = 2, min_word_length : int = 2):
+    def build_vocab(self, corpus : Corpus, min_count : int = 2, min_word_length : int = 1, subsample : bool = True):
 
         self.min_count = min_count
         self.min_word_length = min_word_length
 
-        raw_tokens = corpus.get_tokens()
+
+        raw_tokens = corpus.tokens
 
         self.vocabulary = Vocabulary(min_count, min_word_length)
+
         self.vocabulary.build_vocab(raw_tokens)
 
-        token_ids = self.vocabulary.prepare_tokens(raw_tokens)
+        token_ids = self.vocabulary.prepare_tokens(raw_tokens, subsample=subsample)
 
         self.vocab_size = len(self.vocabulary.word_to_index)
 
-        self.word_embeddings = np.random.uniform(-0.8, 0.8,(self.vocab_size, self.embedding_size))
-        self.context_embeddings = np.random.uniform(-0.8, 0.8,(self.vocab_size, self.embedding_size))
+        self._init_weights()
+
 
         return token_ids
 

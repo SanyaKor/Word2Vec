@@ -2,23 +2,34 @@ from .tokenizer import Tokenizer
 
 class Corpus:
 
-    def __init__(self, path, tokenizer=None, limit: int = 100_000_000):
-        self.path = path
+    def __init__(self, tokenizer=None, limit: int = 100_000_000):
         self.limit = limit
         self.tokenizer = tokenizer or Tokenizer()
+        self.tokens = None
 
-        with open(path, "r") as file:
-            text = file.read()
+    def load_from_file(self, path, limit: int = 100_000_000):
+
+        with open(path, "r") as f:
+            text = f.read()
 
         tokens = self.tokenizer.tokenize(text)
 
-        if self.limit:
-            tokens = tokens[:self.limit]
+        if limit:
+            tokens = tokens[:limit]
 
-        self._tokens = tokens
+        self.tokens = tokens
 
-    def get_tokens(self):
-        return self._tokens
+    def load_from_text(self, text, limit: int = 100_000_000):
+
+        tokens = self.tokenizer.tokenize(text)
+
+        if limit:
+            tokens = tokens[:limit]
+
+        self.tokens = tokens
+
+
+
 
 
 
